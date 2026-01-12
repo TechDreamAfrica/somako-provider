@@ -10,23 +10,8 @@ class NotificationService:
     """Service for sending notifications via SMS (Arkeseel), WhatsApp, and in-app"""
 
     def __init__(self):
-        # Legacy Twilio for WhatsApp (optional)
-        self.twilio_account_sid = getattr(settings, 'TWILIO_ACCOUNT_SID', None)
-        self.twilio_auth_token = getattr(settings, 'TWILIO_AUTH_TOKEN', None)
-        self.twilio_whatsapp_number = getattr(settings, 'TWILIO_WHATSAPP_NUMBER', 'whatsapp:+14155238886')
-
-        # Initialize Twilio client only if needed for WhatsApp
-        if self.twilio_account_sid and self.twilio_auth_token:
-            try:
-                from twilio.rest import Client
-                self.twilio_client = Client(self.twilio_account_sid, self.twilio_auth_token)
-            except ImportError:
-                self.twilio_client = None
-                logger.warning("Twilio library not installed. WhatsApp notifications will be disabled.")
-        else:
-            self.twilio_client = None
-
         # SMS will be handled by existing utils/sms_utils.py
+        pass
 
     def create_notification(self, user, notification_type, title, message, channels=None,
                           reference_id=None, reference_type=None, data=None):
@@ -108,37 +93,10 @@ class NotificationService:
             return False
 
     def send_whatsapp(self, notification):
-        """Send WhatsApp message via Twilio (optional)"""
-        if not self.twilio_client:
-            logger.error("Twilio client not initialized for WhatsApp")
-            notification.mark_as_failed()
-            return False
-
-        if not notification.phone_number:
-            logger.error(f"No phone number for user {notification.user.username}")
-            notification.mark_as_failed()
-            return False
-
-        try:
-            # Format phone number
-            phone = notification.phone_number
-            if not phone.startswith('+'):
-                phone = f"+{phone}"
-
-            message = self.twilio_client.messages.create(
-                body=f"*{notification.title}*\n\n{notification.message}",
-                from_=self.twilio_whatsapp_number,
-                to=f"whatsapp:{phone}"
-            )
-
-            notification.mark_as_sent(message_sid=message.sid)
-            logger.info(f"WhatsApp sent to {phone}: {message.sid}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to send WhatsApp to {notification.phone_number}: {str(e)}")
-            notification.mark_as_failed()
-            return False
+        """Send WhatsApp message - Currently disabled, falls back to SMS"""
+        logger.warning("WhatsApp notifications are not configured. Falling back to SMS.")
+        # Fall back to SMS for now
+        return self.send_sms(notification)
 
     def send_notification(self, user, notification_type, title, message, channels=None,
                          reference_id=None, reference_type=None, data=None):
